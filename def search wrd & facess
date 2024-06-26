@@ -1,0 +1,36 @@
+import zipfile
+
+from PIL import Image
+import pytesseract
+import cv2 as cv
+import numpy as np
+
+# loading the face detection classifier
+face_cascade = cv.CascadeClassifier('readonly/haarcascade_frontalface_default.xml')
+
+# Function
+def search_word_and_faces(zip_file, wrd):
+    with zipfile.ZipFile(zip_file, mode='r') as archive:
+        for fileinfo in archive.infolist():
+            with archive.open(fileinfo.filename) as file:
+                img = Image.open(file).convert('RGB')
+                imgcv = np.array(img)
+                gray = cv.cvtColor(imgcv, cv.COLOR_RGB2GRAY)
+                faces = face_cascade.detectMultiScale(gray, scaleFactor=1.10)
+                text = pytesseract.image_to_string(img)
+                if wrd in text:
+                    print('Results found in file {}'.format(fileinfo.filename))
+                    if len(faces) ==0:
+                        print('But there were no faces in that file!')
+                    else:
+                        contact_sheet=Image.new(img.mode, (300*len(faces), 300))
+                        x=0
+                        for (x,y,w,h) in faces:
+                            face_img = img.crop((x, y, x+w, y+h))
+                            face_img.thumbnail((300, 300))
+                            contact_sheet.paste(face_img, (x, 0))
+                            x+=300
+                        display(contact_sheet)
+                        
+search_word_and_faces('readonly/small_img.zip', 'Christopher')
+#search_word_and_faces('readonly/images.zip', 'Mark')
