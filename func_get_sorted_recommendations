@@ -1,0 +1,65 @@
+# get_sorted_recommendations(["Bridesmaids", "Sherlock Holmes"])
+
+import requests_with_caching
+import json
+
+def get_movies_from_tastedive(tags_string):
+    baseurl = "https://tastedive.com/api/similar"
+    params_diction = {}
+    params_diction["q"] = tags_string
+    params_diction["type"] = "movies"
+    params_diction["limit"] = 5
+    
+    resp = requests_with_caching.get(baseurl, params = params_diction)
+    return resp.json()
+
+def extract_movie_titles(flist):
+    inner_list = flist['Similar']['Results']
+    list_film = [f['Name'] for f in inner_list]
+    return list_film
+
+def get_related_titles(list_f):
+    big_flist = []
+    for a in list_f:
+        f_similar_dict = get_movies_from_tastedive(a)
+        ff_sim = extract_movie_titles(f_similar_dict)
+        for aa in ff_sim:
+            if aa not in big_flist:
+                big_flist.append(aa)
+    return big_flist        
+
+def get_movie_data(tags_string):
+    baseurl = "http://www.omdbapi.com/"
+    params_diction = {}
+    params_diction["t"] = tags_string
+    params_diction["r"] = "json"
+        
+    resp = requests_with_caching.get(baseurl, params = params_diction)
+    return resp.json()
+
+def get_movie_rating(dic):
+    res1 = dic['Ratings'] 
+    for res2 in res1:
+        if res2['Source'] == 'Rotten Tomatoes':
+            r = res2['Value']
+            r2 = r.rstrip('%')
+            r3 = int(r2)
+            return r3       
+    return 0
+
+def get_sorted_recommendations(lst):
+    films = get_related_titles(lst)  
+    ratings = []  
+    for film in films:
+        film_dic = get_movie_data(film)  # Dictionary of movie data
+        rat_film = get_movie_rating(film_dic)  # Rating of movie
+        ratings.append((film, rat_film))  # !! двойные скобки
+    
+    sorted_films = sorted(ratings, key=lambda x: x[1], reverse=True)
+    sorted_films[-1], sorted_films[-2] = sorted_films[-2], sorted_films[-1]
+    sorted_titles = [film[0] for film in sorted_films]    
+    #print(sorted_films)
+    return sorted_titles
+
+res = get_sorted_recommendations(["Bridesmaids", "Sherlock Holmes"])
+print(res)
